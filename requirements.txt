@@ -1,0 +1,33 @@
+# requirements.txt (version simplifiée)
+
+# API Framework
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+
+# Classification (HF Router)
+openai
+
+# Data & Analytics
+pandas
+pyarrow
+numpy
+
+# Utilitaires
+python-dotenv
+tenacity
+requests
+
+# Base de données (Supabase)
+supabase
+
+# Tests
+pytest
+httpx
+
+# PII Detection (optionnel - à installer séparément)
+presidio-analyzer
+spacy
+
+loguru
