@@ -28,6 +28,32 @@ class SupabaseDataLoader:
         self.client: Client = create_client(self.supabase_url, self.supabase_key)
         logger.info("✅ Connexion Supabase établie")
     
+    def _list_storage(self, path: str, *, limit: int = 100) -> List[dict]:
+        """Retourne l'intégralité des items en paginant la Storage API."""
+        results = []
+        offset = 0
+
+        while True:
+            batch = self.client.storage.from_(self.bucket_name).list(
+                path,
+                {
+                    "limit": limit,
+                    "offset": offset,
+                    "sortBy": {"column": "name", "order": "asc"},
+                },
+            )
+            if not batch:
+                break
+
+            results.extend(batch)
+
+            if len(batch) < limit:
+                break
+
+            offset += limit
+
+        return results
+
     def list_date_folders(self, subfolder: str = "messages") -> List[str]:
         """
         Liste tous les dossiers de dates dans le bucket
@@ -39,10 +65,7 @@ class SupabaseDataLoader:
             Liste des dossiers (ex: ['date=2022-12-30', 'date=2023-01-15', ...])
         """
         try:
-            # Lister le contenu du sous-dossier (messages ou chats)
-            files = self.client.storage.from_(self.bucket_name).list(subfolder)
-            
-            # Extraire les noms de dossiers commençant par "date="
+            files = self._list_storage(subfolder)
             date_folders = sorted([
                 f['name'] for f in files 
                 if f['name'].startswith('date=')
@@ -70,7 +93,7 @@ class SupabaseDataLoader:
             # Construire le chemin complet
             full_path = f"{subfolder}/{folder_path}"
             
-            files = self.client.storage.from_(self.bucket_name).list(full_path)
+            files = self._list_storage(full_path)
             
             parquet_files = [
                 f"{full_path}/{f['name']}" 
@@ -257,6 +280,63 @@ class SupabaseDataLoader:
             return combined.sample(n=n_samples, random_state=42)
         else:
             return combined
+
+    def get_user_conversation(
+        self,
+        user_id: str,
+        subfolder: str = "messages",
+        sample_fraction: float = 1.0,
+        max_files: Optional[int] = None,
+    ) -> pd.DataFrame:
+        if not user_id:
+            return pd.DataFrame()
+
+        folders = self.list_date_folders(subfolder)
+        collected = []
+        processed = 0
+
+        for folder in folders:
+            parquet_files = self.list_files_in_folder(folder, subfolder)
+            for file_path in parquet_files:
+                if max_files and processed >= max_files:
+                    break
+                df = self.load_parquet_to_dataframe(file_path)
+                processed += 1
+                if df is None or df.empty:
+                    continue
+
+                if sample_fraction < 1.0:
+                    df = df.sample(frac=sample_fraction, random_state=42)
+
+                if 'user_id' not in df.columns:
+                    continue
+
+                user_rows = df[df['user_id'] == user_id]
+                if user_rows.empty:
+                    continue
+
+                if 'chat_provider_id' in df.columns:
+                    chats = user_rows['chat_provider_id'].dropna().unique().tolist()
+                    if chats:
+                        conversation = df[df['chat_provider_id'].isin(chats)]
+                    else:
+                        conversation = user_rows
+                else:
+                    conversation = user_rows
+
+                collected.append(conversation)
+
+            if max_files and processed >= max_files:
+                break
+
+        if not collected:
+            logger.info("⚠️ Aucun message trouvé pour user_id=%s", user_id)
+            return pd.DataFrame()
+
+        combined = pd.concat(collected, ignore_index=True)
+        if 'created_at' in combined.columns:
+            combined = combined.sort_values('created_at')
+        return combined
 
 
 # Fonctions helper pour utilisation rapide

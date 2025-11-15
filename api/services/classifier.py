@@ -1,19 +1,22 @@
 from typing import Dict, Optional, List
-from src.classifiers_hf_router import HFRouterClassifier
 import logging
+
+from src.classification import HFRouterEngine, MessageClassifier
 
 logger = logging.getLogger(__name__)
 
 class ClassifierService:
     """Service wrapper pour la classification"""
     
-    def __init__(self, model: str = "gemma-9b"):
+    def __init__(self, model: str = "gemma-9b", api_key: Optional[str] = None):
         """
         Args:
             model: Modèle à utiliser (gemma-9b, llama-8b, mistral-7b, qwen-7b)
         """
-        self.classifier = HFRouterClassifier(model=model)
-        self.model_name = self.classifier.model_name
+        engine = HFRouterEngine(model=model, api_key=api_key)
+        self.engine = engine
+        self.classifier = MessageClassifier(engine=engine)
+        self.model_name = self.classifier.engine_name
         logger.info(f"✅ ClassifierService initialisé avec {self.model_name}")
     
     def classify(
@@ -33,5 +36,4 @@ class ClassifierService:
         """
         # Convertir context en string
         context_str = " | ".join(context) if context else ""
-        
-        return self.classifier.classify_complete(content, context_str)
+        return self.classifier.classify(content, context_str)

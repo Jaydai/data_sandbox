@@ -9,6 +9,8 @@ pydantic-settings
 # Classification (HF Router)
 openai
 
+ollama
+
 # Data & Analytics
 pandas
 pyarrow

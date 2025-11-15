@@ -20,6 +20,7 @@ from api.services.classifier import ClassifierService
 from api.services.pii_detector import PIIDetector
 from api.services.quality_scorer import QualityScorer
 from api.services.risk_analyzer import RiskAnalyzer
+from src.enrichment import PublicFigureChecker
 
 # Configuration logging
 logging.basicConfig(level=logging.INFO)
@@ -44,7 +45,8 @@ app.add_middleware(
 
 # Initialisation des services
 classifier_service = ClassifierService(model="gemma-9b")
-pii_detector = PIIDetector()
+public_checker = PublicFigureChecker(classifier_service.engine)
+pii_detector = PIIDetector(public_figure_checker=public_checker)
 quality_scorer = QualityScorer()
 risk_analyzer = RiskAnalyzer()
 
