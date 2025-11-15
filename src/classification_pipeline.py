@@ -33,7 +33,7 @@ class ClassificationPipeline:
     
     def __init__(
         self, 
-        model: str = "qwen2.5:14b",
+        model: str = "mistral-small:latest",
         output_dir: str = "data/processed",
         engine: str = "ollama",
         *,
@@ -751,7 +751,7 @@ class ClassificationPipeline:
         return results_df
 
 
-def quick_classify_sample(n_samples: int = 1000, model: str = "qwen2.5:14b") -> pd.DataFrame:
+def quick_classify_sample(n_samples: int = 1000, model: str = "mistral-small:latest") -> pd.DataFrame:
     """Fonction helper pour classifier rapidement un échantillon"""
     pipeline = ClassificationPipeline(model=model)
     return pipeline.run_sample_classification(n_samples=n_samples)

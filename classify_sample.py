@@ -36,7 +36,7 @@ def main():
     parser.add_argument(
         '--model', 
         type=str, 
-        default='qwen2.5:14b',
+        default='mistral-small:latest',
         help='Modèle à utiliser (Ollama ou HF)'
     )
     parser.add_argument(

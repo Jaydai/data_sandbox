@@ -107,6 +107,57 @@ class SupabaseDataLoader:
         except Exception as e:
             logger.error(f"❌ Erreur lors du listing des fichiers: {e}")
             return []
+    def load_chats_in_folder(self, folder_path: str, subfolder: str = "chats") -> pd.DataFrame:
+        files = self.list_files_in_folder(folder_path, subfolder)
+        dataframes = []
+        for file_path in files:
+            df = self.load_parquet_to_dataframe(file_path)
+            if df is not None and not df.empty:
+                df = df.copy()
+                df['date_folder'] = folder_path
+                dataframes.append(df)
+        if not dataframes:
+            return pd.DataFrame()
+        combined = pd.concat(dataframes, ignore_index=True)
+        if 'created_at' in combined.columns:
+            combined = combined.sort_values('created_at')
+        return combined
+
+    def load_chat_messages(
+        self,
+        chat_id: str,
+        date_folder: Optional[str] = None,
+        subfolder: str = "messages",
+        fallback_all_dates: bool = True,
+    ) -> pd.DataFrame:
+        if not chat_id:
+            return pd.DataFrame()
+
+        folders = [date_folder] if date_folder else []
+        if fallback_all_dates or not folders:
+            folders.extend([f for f in self.list_date_folders(subfolder) if f and f != date_folder])
+
+        for folder in folders:
+            if not folder:
+                continue
+            files = self.list_files_in_folder(folder, subfolder=subfolder)
+            messages = []
+            for file_path in files:
+                df = self.load_parquet_to_dataframe(file_path)
+                if df is None or df.empty or 'chat_provider_id' not in df.columns:
+                    continue
+                subset = df[df['chat_provider_id'] == chat_id]
+                if subset.empty:
+                    continue
+                messages.append(subset)
+
+            if messages:
+                combined = pd.concat(messages, ignore_index=True)
+                if 'created_at' in combined.columns:
+                    combined = combined.sort_values('created_at')
+                return combined
+
+        return pd.DataFrame()
     
     def download_parquet_file(self, file_path: str) -> Optional[bytes]:
         """

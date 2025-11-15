@@ -42,7 +42,7 @@ class ClassificationEngine(ABC):
 class OllamaEngine(ClassificationEngine):
     """Run prompts against a local Ollama model."""
 
-    def __init__(self, model: str = "qwen2.5:14b"):
+    def __init__(self, model: str = "mistral-small:latest"):
         if ollama is None:
             raise ImportError(
                 "Le module 'ollama' est requis pour OllamaEngine. "
